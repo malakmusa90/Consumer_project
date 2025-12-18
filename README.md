@@ -60,16 +60,19 @@ date
 link
 
 timestamp (Kafka ingestion timestamp)
+
 -------------------------------------------------------
 Database name is configured as:
 
 dashboard_news.news
+
 -------------------------------------------------------
 Config inside Spark:
 
 .config("spark.mongodb.output.uri", "mongodb://127.0.0.1/")
 .config("spark.mongodb.output.database", "dashboard_news")
 .config("spark.mongodb.output.collection", "news")
+
 --------------------------------------------------------
  Kafka Configuration
 
@@ -92,6 +95,7 @@ BitSet size = 500,000
 
 If the item exists → ignored
 If new → accepted & stored
+
 --------------------------------------------------------
 This keeps the stream clean without heavy memory usage.
 
