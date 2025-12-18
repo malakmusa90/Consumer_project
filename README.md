@@ -31,6 +31,7 @@ Bloom Filter
 src/
  ├─ consumer/SparkKafkaConsumer.scala
  └─ utils/BloomFilter.scala
+ 
  --------------------------------------------------------
  Kafka Input Format
 
