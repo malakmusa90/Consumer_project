@@ -96,9 +96,9 @@ BitSet size = 500,000
 
 If the item exists → ignored
 If new → accepted & stored
+This keeps the stream clean without heavy memory usage.
 
 --------------------------------------------------------
-This keeps the stream clean without heavy memory usage.
 
  Streaming Trigger
 
