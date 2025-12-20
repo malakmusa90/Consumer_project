@@ -86,17 +86,9 @@ Offsets: latest
 -----------------------------------------------------
  Duplicate Detection (Bloom Filter)
 
-A Bloom Filter tracks uniqueness using:
+The project uses a Bloom Filter from the Twitter Algebird library to prevent duplicate news from being stored in MongoDB. This library provides a built-in probabilistic set that automatically handles hashing and memory management, without needing manual bit arrays or snapshots.
 
-link + title key
-
-k = 7 hash functions
-
-BitSet size = 500,000
-
-If the item exists → ignored
-If new → accepted & stored
-This keeps the stream clean without heavy memory usage.
+Uniqueness is checked using a combined key of title + source, If the item already exists in the Bloom Filter, it is ignored; otherwise, it is accepted and stored.
 
 --------------------------------------------------------
 
