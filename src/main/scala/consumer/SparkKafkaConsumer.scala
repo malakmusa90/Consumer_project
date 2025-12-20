@@ -53,27 +53,25 @@ object SparkKafkaConsumer {
       )
 
 
-    val bloomFilteredParsedDF = parsedDF.filter { row =>
+   val bloomFilteredParsedDF = parsedDF.filter { row =>
 
-      val link  = row.getAs[String]("link")
-      val title = row.getAs[String]("title")
+      val rawTitle = row.getAs[String]("title")
+      val rawSource = row.getAs[String]("source")
 
-      if (link == null || title == null) {
-        println("[BLOOM] NULL item dropped")
+      if (rawTitle == null || rawSource == null) {
+        println("[BLOOM] NULL field dropped")
         false
       } else {
+        val cleanTitle = rawTitle.trim.toLowerCase()
+        val cleanSource = rawSource.trim.toLowerCase()
+        val bloomKey = s"${cleanTitle}##${cleanSource}"
 
-        val bloomKey = s"$link||$title"
-
-        if (!BloomFilter.mightContain(bloomKey)) {
-
-          println("[BLOOM] NEW item accepted")
-          BloomFilter.add(bloomKey)
+        if (!BloomFilterManager.mightContain(bloomKey)) {
+          BloomFilterManager.add(bloomKey)
+          println(s"[BLOOM] NEW")
           true
-
         } else {
-
-          println("[BLOOM] DUPLICATE item ignored")
+          println(s"[BLOOM] DUPLICATE")
           false
         }
       }
@@ -114,12 +112,15 @@ object SparkKafkaConsumer {
       .withColumn("parsed_date", to_timestamp(col("date")))
 
 
-    val query = finalWithDateDF.writeStream
-      .trigger(org.apache.spark.sql.streaming.Trigger.ProcessingTime("3 seconds"))
+   val query = finalWithDateDF.writeStream
+      .trigger(org.apache.spark.sql.streaming.Trigger.ProcessingTime("5 seconds"))
       .outputMode("append")
+      .option("checkpointLocation", "./checkpoints/news_cp")
       .foreachBatch { (batchDF: Dataset[Row], _: Long) =>
 
-        batchDF
+        val uniqueBatch = batchDF.dropDuplicates("title", "link")
+
+        val finalBatch = uniqueBatch
           .select(
             col("clean_title").as("title"),
             col("clean_content").as("content"),
@@ -128,12 +129,20 @@ object SparkKafkaConsumer {
             col("link"),
             col("timestamp")
           )
-          .write
-          .format("com.mongodb.spark.sql.DefaultSource")
-          .mode("append")
-          .save()
-      }
-      .start()
+
+        try {
+          finalBatch.write
+            .format("com.mongodb.spark.sql.DefaultSource")
+            .mode("append")
+            .option("upsert", "true")
+            .option("replaceDocument", "false")
+            .option("continueOnError", "true")
+            .save()
+        } catch {
+          case e: Exception =>
+            println(s"[Mongo] Duplicate ignored: ${e.getMessage}")
+        }
+      }.start()
 
     query.awaitTermination()
   }
